@@ -22,9 +22,7 @@ function module.playSoundAtPlayer(player: Player, soundName: string)
 end
 
 function module.playSoundAtPart(targetPart: BasePart?, soundName: string)
-	if not targetPart then
-		return
-	end
+	if not targetPart then return end
 
 	soundEvent:FireAllClients(nil, targetPart, soundName)
 end
