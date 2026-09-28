@@ -190,6 +190,7 @@ function module.new(params)
 end
 
 function module:setStat(stat: string, value: any)
+	-- temporary effects use unique IDs so older effects cannot remove newer ones
 	local id = effectsModule.addEffect(self, stat)
 	self.tempValues[stat] = value
 	return id
@@ -332,6 +333,7 @@ function module:deflect()
 				previousState.Connection:Disconnect()
 			end
 
+			-- each parry gets a token so an older Heartbeat callback cannot override a newer parry
 			local token = (previousState and previousState.Token or 0) + 1
 
 			weldStates[character] = {
@@ -389,7 +391,7 @@ function module:deflect()
 		end
 	end
 
-	-- Removing downward velocity keeps the deflected ball from being launched into the floor.
+	-- removing downward velocity keeps the deflected ball from being launched into the floor
 	deflectDir = Vector3.new(
 		deflectDir.X,
 		math.max(0, deflectDir.Y) + 0.0001,
@@ -490,7 +492,7 @@ function module:act()
 			and self.tempValues.velocity
 			or self.currentValues.velocity
 
-		-- Splitting velocity into radial/tangential parts lets the distance curve control how sharply the ball homes in.
+		-- splitting velocity into radial/tangential parts lets the distance curve control how sharply the ball homes in
 		activeVelocity += direction * (currentAcceleration * dtScale)
 
 		local radialVelocity = direction * activeVelocity:Dot(direction)
@@ -500,6 +502,8 @@ function module:act()
 		local curve = distanceRatio ^ currentDecayPower
 		local newTangentialVelocity = tangentialVelocity * curve
 		local removedTangentialSpeed = tangentialVelocity.Magnitude - newTangentialVelocity.Magnitude
+
+		-- removed sideways velocity is redirected forward to preserve the ball's momentum
 		local forwardVelocity = direction * removedTangentialSpeed
 
 		activeVelocity = radialVelocity + newTangentialVelocity + forwardVelocity
@@ -507,6 +511,7 @@ function module:act()
 		local speed = activeVelocity.Magnitude
 
 		if speed > 0 then
+			-- exponential drag gives smoother, frame-rate independent velocity decay
 			local dragForce = currentDragCoef * speed ^ currentDragPower
 			local decayRate = (dragForce / speed) * dtScale
 			local dragMultiplier = math.exp(-decayRate)
@@ -527,6 +532,7 @@ function module:act()
 		)
 
 		if not self.tempValues.acceleration then
+			-- jerk increases acceleration so the ball speeds up over time
 			self.currentValues.acceleration += currentJerk * dtScale
 		end
 	end)
@@ -631,6 +637,7 @@ function module:getNextTarget(mousePos: Vector3?)
 		local index = table.find(targets, currentTarget)
 
 		if index then
+			--removing the current target prevents the ball from immediately selecting it again.
 			table.remove(targets, index)
 		end
 	end
